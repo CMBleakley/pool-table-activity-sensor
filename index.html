@@ -1,0 +1,319 @@
+
+<html>
+  <head>
+    <title>Is the pool table free?</title>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.0/themes/smoothness/jquery-ui.css" />
+    <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.0/jquery-ui.min.js"></script>
+
+    <!--------------------------------------------------------------------------
+      - Page Styling
+      ---------------------------------------------------------------------- -->
+	
+    <style type="text/css">
+      html, body {
+        height:90%;
+        width:100%;
+        margin:0px;
+	color: #eeeeee;
+	font-family:Arial, Helvetica, sans-serif;
+      }
+      
+      body {
+        display:table;
+        vertical-align:middle;
+        text-align:center;
+      }
+
+      .center {
+        display:table-cell;
+        vertical-align:middle;
+	font-size: 300px;
+	font-weight: bolder;
+      }
+      
+      #graph {
+	margin-top: -20px;
+      	font-size: 25px;
+	font-weight: bolder;
+	font-size: 8px;
+      }
+      
+      #message {
+	margin-top: 25px;
+      	font-size: 25px;
+	font-weight: bolder;
+	font-size: 25px;
+      }
+    </style>
+    
+    <!--------------------------------------------------------------------------
+      - Cubism Styling
+      ---------------------------------------------------------------------- -->
+      
+    <style>
+    
+      .axis path, .axis line {
+        fill: none;
+        stroke: #fff;
+        shape-rendering: crispEdges;
+      }
+      
+      .axis {
+        font: 10px Helvetica;
+        color: #fff;
+      }
+      
+      .axis text {
+        -webkit-transition: fill-opacity 250ms linear;
+        color: #fff;
+      }
+      
+      .axis path {
+        display: none;
+        color: #fff;
+      }
+      
+      .axis line {
+        stroke: #fff;
+        shape-rendering: crispEdges;
+        color: #fff;
+      }
+      
+      .horizon {
+        border-bottom: solid 0px #000;
+        overflow: hidden;
+        position: relative;
+        display: inline;
+        color: #fff;
+      }
+      
+      .horizon {
+        border-top: solid 0px #000;
+        border-bottom: solid 0px #000;
+      }
+      
+      .horizon + .horizon {
+        border-top: none;
+      }
+      
+      .horizon .title, .horizon .value {
+        display:none;
+        bottom: 0;
+        line-height: 30px;
+        margin: 0 6px;
+        text-shadow: 0 1px 0 rgba(255,255,255,.5);
+        white-space: nowrap;
+        color: #fff;
+      }
+      
+      .horizon .title {
+        left: 0;
+      }
+      
+      .horizon .value {
+        right: 0;
+      }
+      
+      .line {
+        background: #000;
+        opacity: .2;
+        z-index: 2;
+        display:none;
+      }
+    </style>
+
+    <!--------------------------------------------------------------------------
+      - Rendering Scripts
+      ---------------------------------------------------------------------- -->
+    <script>
+ 
+    // --------------------------------------------
+    // - Globals
+    // --------------------------------------------  
+    
+    var active = false;
+    var motion = false;
+    
+    $( document ).ready(function() {
+      setInitialState();
+      run();
+    });
+    
+    function setInitialState() {
+      $.ajax({
+        url: "http://arduino.local/data/get",
+        type: "GET",
+        dataType: 'jsonp',
+        async:false,
+        success: function(data) {
+          var json = JSON.parse(data);
+          $("#graph").hide(100, function() {
+            if( json.value.active == "1") {
+              setTableActive(true);
+            } else if( json.value.active == "0") {
+              setTableInactive(true);
+            }
+          });
+        },
+        error: function(a,b,c) {
+          console.log(c);
+          setTableUnknown();
+        },
+        timeout: 5000,
+      })
+    }
+    
+    // ----------------------------------------------------
+    // - Main Loop
+    // ----------------------------------------------------
+
+    function run() {	
+      (function poll() {
+        setTimeout(function() {
+          $.ajax({
+            url: "http://arduino.local/data/get",
+            type: "GET",
+            dataType: 'json',
+            success: function(json) {
+              //var json = JSON.parse(data);
+              motion = (json.value.motion == "1");
+              if( json.value.active == "1") {
+                setTableActive(false);
+              } else if( json.value.active == "0") {
+                setTableInactive(false);
+              }
+              console.log(JSON.stringify(json));
+            },
+            error: function(a,b,c) {
+              //console.log(c);
+              console.log("error");
+              setTableUnknown();
+            },
+            complete: poll
+          });
+        }, 2000);
+      })();
+    }
+    
+    // --------------------------------------------
+    // - Inactive
+    // --------------------------------------------
+    
+    function setTableInactive(force) {
+        if( active == null || active || force ) {
+          active = false;
+          var color = "#259b24";
+          var text = "YES";
+          var duration = 1000;
+          $( "body" ).animate({ backgroundColor: color}, duration);
+          $( "#big" ).fadeOut(duration, function() { $("#big").text(text).css("color","#fff").css("opacity","0.95").fadeIn(duration)});
+          $( "#message" ).fadeOut(duration, function() { $(this).text("the table is open").css("color","#fff").css("opacity","0.9").fadeIn(duration)});
+          $( "#graph" ).fadeOut(duration, function() { $(this).fadeIn(duration*2)});
+        } 
+    }
+
+    // --------------------------------------------
+    // - Active
+    // --------------------------------------------
+    
+    function setTableActive(force) {
+      if( active == null || !active || force) {
+        active = true;
+        var color = "#e51c23";
+        var text = "NO";
+        var duration = 1000;
+        $( "body" ).animate({ backgroundColor: color}, duration);
+        $( "#big" ).fadeOut(duration, function() { $(this).text(text).css("color","#fff").css("opacity","0.95").fadeIn(duration)});
+        $( "#message" ).fadeOut(duration, function() { $(this).text("the table is in use").css("color","#fff").css("opacity","0.9").fadeIn(duration)});
+        $( "#graph" ).fadeOut(duration, function() { $(this).fadeIn(duration)});
+      } 
+    }
+    
+    // --------------------------------------------
+    // - Unknown
+    // --------------------------------------------
+    
+    function setTableUnknown() {
+      active = null;
+      var color = "#ffd740";
+      var text = "???";
+      var duration = 1000;
+      $( "body" ).animate({ backgroundColor: color}, duration);
+      $( "#big" ).fadeOut(duration, function() { $(this).text(text).css("color","#333").fadeIn(duration)});
+      $( "#message" ).fadeOut(duration, function() { $(this).text("something went wrong").css("color","#333").fadeIn(duration)});
+      $( "#graph" ).fadeOut(duration);
+    }
+    
+    </script>
+
+    <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.4.11/d3.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/cubism/1.6.0/cubism.v1.min.js"></script>
+  </head>
+
+  <body id="body">
+    <div id="center" class="center">
+	<div id="big"></div>
+	<div id="graph"></div>
+	<div id="message"></div>
+    </div>
+  </body>
+
+<!------------------------------------------------------------------------------
+  - Cubism Script
+  -------------------------------------------------------------------------- -->
+  <script>
+  
+  // -----------------------------------------------------------
+  // - Check to see if we have motion from the latest reading
+  // -----------------------------------------------------------
+  
+  function horizonData() {
+    return context.metric(function(start, stop, step, callback) {
+      var values = [];
+      start = +start;
+      stop = +stop;
+      while (start < stop) {
+        start += step;
+        values.push( motion ? 10 : 1);
+      }
+      callback(null, values);
+    }, "");
+  }
+  
+  var context = cubism.context()
+      .serverDelay(0)
+      .clientDelay(0)
+      .step(1000)
+      .size(500);
+  
+  var hData = horizonData();
+    
+  d3.select("#graph").call(function(div) {
+    var horizon = context.horizon();
+    horizon.colors(["#ffffff", "#ffffff"]);
+    div.selectAll(".horizon")
+      .data([hData])
+      .enter().append("div")
+      .attr("class", "horizon")
+      .call(horizon.extent([-20, 20]));
+        
+    div.append("div")
+      .attr("class", "axis")
+      .call(context.axis().orient("bottom"))
+      .call(function(svg) {
+        context.on("change.axis", function() {
+          svg.selectAll("text").style("fill", "#ffffff");
+        });
+      });
+  
+  });
+  
+  context.on("focus", function(i) {
+    d3.selectAll(".value").style("right", i == null ? null : context.size() - i + "px");
+  });
+  
+  </script>
+
+</html>
+
